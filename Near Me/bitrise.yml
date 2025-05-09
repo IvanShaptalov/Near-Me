@@ -29,7 +29,7 @@ workflows:
     description: The workflow will clone the Git repository, restore caches, build the app, run tests, and export an IPA file with caching enabled.
     steps:
     - git-clone@8: {}
-    - install-spm@2: {}
+    - install-spm@1: {}
     - xcode-test@6:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
@@ -103,7 +103,7 @@ workflows:
     - restore-cache@2:
         inputs:
         - key: spm-cache-{{ .Branch }}
-    - install-spm@2: {}
+    - install-spm@1: {}
     - xcode-test@6:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
