@@ -13,6 +13,7 @@ app:
   - BITRISE_DISTRIBUTION_METHOD: ad-hoc
     opts:
       is_expand: false
+
 pipelines:
   run_tests:
     workflows:
@@ -22,35 +23,52 @@ pipelines:
         - build_for_testing
         parallel: $TEST_SHARD_COUNT
 workflows:
-  archive_and_export_app:
-    summary: Run your Xcode tests and create an IPA file to install your app on a device or share it with your team.
-    description: The workflow will first clone your Git repository, cache and install your project's dependencies if any, run your Xcode tests, export an IPA file from the project and save it.
+  archive_cache_and_export_app:
+    summary: Run your Xcode tests, create an IPA file and export it, with caching enabled for faster builds.
+    description: The workflow will clone the Git repository, restore caches, build the app, run tests, and export an IPA file with caching enabled.
     steps:
     - git-clone@8: {}
+    # Restore caches for CocoaPods, SPM, etc.
+    - cache-pull@2:
+        inputs:
+        - restore_cocoapods_cache: "true"
+        - restore_spm_cache: "true"
+    - install-cocoapods@1: {}  # Restore CocoaPods dependencies if needed
+    - install-spm@2: {}  # Install SPM dependencies if needed
+    # Build and test the project
     - xcode-test@6:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
         - scheme: $BITRISE_SCHEME
         - test_repetition_mode: retry_on_failure
-        - cache_level: none
+        - cache_level: cache
+    # Archive the project with caching enabled
     - xcode-archive@5:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
         - scheme: $BITRISE_SCHEME
         - distribution_method: $BITRISE_DISTRIBUTION_METHOD
         - automatic_code_signing: api-key
-        - cache_level: none
+        - cache_level: cache
+    # Push cache after archiving
+    - cache-push@2:
+        inputs:
+        - cache_spm_dependencies: "true"
+        - cache_cocoapods_dependencies: "true"
+    # Deploy to Bitrise with the IPA file
     - deploy-to-bitrise-io@2: {}
   build_for_testing:
     steps:
     - git-clone@8: {}
+    # Restore cache for SwiftPM
     - restore-spm-cache@1: {}
     - xcode-build-for-test@3:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
         - scheme: $BITRISE_SCHEME
         - destination: generic/platform=iOS Simulator
-        - cache_level: none
+        - cache_level: cache
+    # Save cache for SwiftPM dependencies
     - save-spm-cache@1: {}
     - xcode-test-shard-calculation@0:
         inputs:
@@ -88,23 +106,37 @@ workflows:
         - only_testing: $BITRISE_TEST_SHARDS_PATH/$BITRISE_IO_PARALLEL_INDEX
         - xctestrun: $BITRISE_TEST_BUNDLE_PATH/all_tests.xctestrun
   archive_and_export_app_with_cache:
-    summary: Run your Xcode tests and create an IPA file to install your app on a device or share it with your team.
-    description: The workflow will first clone your Git repository, cache and install your project's dependencies if any, run your Xcode tests, export an IPA file from the project and save it.
+    summary: Run your Xcode tests and create an IPA file to install your app on a device or share it with your team, with cache enabled for faster builds.
+    description: The workflow will first clone your Git repository, restore caches, run your Xcode tests, export an IPA file from the project and save it with caching enabled.
     steps:
     - git-clone@8: {}
+    # Restore caches for CocoaPods, SPM, etc.
+    - cache-pull@2:
+        inputs:
+        - restore_cocoapods_cache: "true"
+        - restore_spm_cache: "true"
+    - install-cocoapods@1: {}  # Restore CocoaPods dependencies if needed
+    - install-spm@2: {}  # Install SPM dependencies if needed
+    # Run tests and archive with cache enabled
     - xcode-test@6:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
         - scheme: $BITRISE_SCHEME
         - test_repetition_mode: retry_on_failure
-        - cache_level: none
+        - cache_level: cache
     - xcode-archive@5:
         inputs:
         - project_path: $BITRISE_PROJECT_PATH
         - scheme: $BITRISE_SCHEME
         - distribution_method: $BITRISE_DISTRIBUTION_METHOD
         - automatic_code_signing: api-key
-        - cache_level: none
+        - cache_level: cache
+    # Push cache after archiving
+    - cache-push@2:
+        inputs:
+        - cache_spm_dependencies: "true"
+        - cache_cocoapods_dependencies: "true"
+    # Deploy to Bitrise with the IPA file
     - deploy-to-bitrise-io@2: {}
 meta:
   bitrise.io:
