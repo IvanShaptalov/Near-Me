@@ -29,9 +29,6 @@ workflows:
     description: The workflow will clone the Git repository, restore caches, build the app, run tests, and export an IPA file with caching enabled.
     steps:
     - git-clone@8: {}
-    - restore-cache@2:
-        inputs:
-        - key: spm-cache-{{ .Branch }}
     - install-spm@2: {}
     - xcode-test@6:
         inputs:
@@ -46,13 +43,6 @@ workflows:
         - distribution_method: $BITRISE_DISTRIBUTION_METHOD
         - automatic_code_signing: api-key
         - cache_level: none
-    - save-cache@2:
-        inputs:
-        - key: spm-cache-{{ .Branch }}
-        - paths: |-
-            .build
-            .swiftpm
-            ~/Library/Developer/Xcode/DerivedData
     - deploy-to-bitrise-io@2: {}
 
   build_for_testing:
